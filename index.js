@@ -6,54 +6,54 @@
 //  _abck=7A50AACF965DEF96890B86A31A5B1994~-1~YAAQRh0gF2PABZxrAQAA07o/0AJTWqhhM/+61dVITdtAfSknDmcT496XF82qo4x7XrkY/YFavGMnlV+DWTDwYoseQvpTZJEqiks8peccZ2VJO12HSbdw1HPBoQs1F3VSjkb0GhOY6F3L7+9eUazrwy98AnDkRf3nPI2zv2jHJP1edYMLB0/gmc2PlMY2/b9WP5i/IpwhjRLMPJ1cFRP3epTgns8vkC/+1qoC3JfjjgDzFy7cujfWrvRxT60Dm0qa5DsujJeSwND4mYtDDVDWajb+EwYPETF/xTHyEQ==~-1~-1~-1;
 //   _ga=GA1.2.1420261656.1576474230`
 
-const puppeteer = require('puppeteer');
-const fs = require('fs');
+const puppeteer = require("puppeteer");
+const fs = require("fs");
 
 const fetchLinks = async () => {
-    const url = 'https://game.capcom.com/cfn/sfv/character';
-    const browser = await puppeteer.launch();
-    const page = await browser.newPage();
+  const url = "https://game.capcom.com/cfn/sfv/character";
+  const browser = await puppeteer.launch();
+  const page = await browser.newPage();
 
-    await page.goto(url);
+  await page.goto(url);
 
-    const links = await page.evaluate(() => {
-        let anchors = document.querySelectorAll('ul.characterSelectList a');
-        return [].slice.call(anchors).map(o => o.href);
-    });
+  const links = await page.evaluate(() => {
+    let anchors = document.querySelectorAll("ul.characterSelectList a");
+    return [].slice.call(anchors).map(o => o.href);
+  });
 
-    await browser.close();
+  await browser.close();
 
-    return links;
+  return links;
 };
 
 const fetchFrameData = async url => {
-    const cookies = [
-        {
-            domain: 'game.capcom.com',
-            name: 'scirid',
-            value:
-                'zPqiJa4j5lQu1_wcxJ5KdtVJjrwX965EDC8oEzRU5kbQ0LcDf2ofP_iTIxMQebCjTdGBxlMwyXI5FxmYQr0v_UYwUFROWEFpVXJxTm1VakZnbjNzVDlzTU5kZG9NRmJSMmZJdHlFbm1SNnc'
-        },
-        {
-            domain: 'game.capcom.com',
-            name: 'language',
-            value: 'en'
-        }
-    ];
+  const cookies = [
+    {
+      domain: "game.capcom.com",
+      name: "scirid",
+      value:
+        "zPqiJa4j5lQu1_wcxJ5KdtVJjrwX965EDC8oEzRU5kbQ0LcDf2ofP_iTIxMQebCjTdGBxlMwyXI5FxmYQr0v_UYwUFROWEFpVXJxTm1VakZnbjNzVDlzTU5kZG9NRmJSMmZJdHlFbm1SNnc"
+    },
+    {
+      domain: "game.capcom.com",
+      name: "language",
+      value: "en"
+    }
+  ];
 
-    const browser = await puppeteer.launch();
-    const page = await browser.newPage();
-    await page.setCookie(...cookies);
-    await page.goto(url);
-    // await page.screenshot({ path: 'paypal_login.png' })
+  const browser = await puppeteer.launch();
+  const page = await browser.newPage();
+  await page.setCookie(...cookies);
+  await page.goto(url);
+  // await page.screenshot({ path: 'paypal_login.png' })
 
-    const html = await page.evaluate(() => {
-        return document.documentElement.outerHTML;
-    });
+  const html = await page.evaluate(() => {
+    return document.documentElement.outerHTML;
+  });
 
-    await browser.close();
+  await browser.close();
 
-    return html;
+  return html;
 };
 
 // const extractFrameData = async location => {
@@ -197,173 +197,313 @@ const fetchFrameData = async url => {
 //     return data;
 // };
 
-
-
 const extractFrameData = async location => {
-    // let contentHtml = fs.readFileSync('characters/akuma.html', 'utf8');
-    let contentHtml = fs.readFileSync(location, 'utf8');
-    const browser = await puppeteer.launch();
-    const page = await browser.newPage();
-    page.on('console', consoleObj => {
-        if (consoleObj.type() != 'warning') {
-            console.log(consoleObj.text());
-        }
-    });
-    await page.setContent(contentHtml);
-
-    const result = await page.evaluate(() => {
-        let vts = [1, 2];
-        let result = {};
-        vts.forEach(vt => {
-            let nameCells = Array.from(document.querySelectorAll(`table.frameTbl[vtrigger="${vt}"] td.name`));
-        
-        let travel = function(node, callback) {
-            let root = node;
-            let current = node;
-
-            while (true) {
-                let child = callback(current);
-                
-                if (child) {
-                    current = child;
-                    continue;
-                }
-
-                if (current == root) {
-                    return;
-                }
-
-                while (!current.nextSibling) {
-                    if (!current.parentNode || current.parentNode == root) {
-                        return;
-                    }
-                    current = current.parentNode;
-                }
-
-                current = current.nextSibling;
-            }
-        };
-
-        let data = [];
-        nameCells.forEach(cell => {
-            let arr = [];
-            let re = /\/([^./]+).gif/;
-
-            travel(cell, function(node) {
-                // console.log('nodeType:', node.nodeType)
-                if (node.nodeType == 3) {
-                    arr.push(node.textContent.trim());
-                } else if (node.nodeName.toLowerCase() == 'img') {
-                    let src = node.src;
-                    let matches = src.match(re);
-                    
-                    arr.push(matches[1]);
-                }
-
-                return node.firstChild;
-            });
-
-           
-            let frame = [];
-            
-                let curr = cell.nextElementSibling;
-                let n = 1;
-                while (curr && curr.nodeName === 'TD') {
-                    if (curr.querySelectorAll('span').length < 1) {
-                        frame.push(curr.innerText.trim());
-                    } else {
-                        if (n == 9 || n == 10) {
-                            frame.push(
-                                curr.querySelector('span').innerText.trim()
-                            );
-                        } else {
-                            let text = [];
-                            Array.from(curr.querySelectorAll('span')).forEach(
-                                span => {
-                                    text.push(span.innerText.trim());
-                                }
-                            );
-                            frame.push(text.join(' '));
-                        }
-                    }
-
-                    curr = curr.nextElementSibling;
-                    n++;
-                }
-            
-
-                data.push({
-                    name: arr.filter(Boolean),
-                    frame: frame
-                });
-        })
-
-        result['vt' + vt] = data;
-        });
-
-        return result;
-    });
-
-    
-
-    for (var key in result) {
-        let data = result[key];
-        data.forEach(item => {
-            item.name = formatName(item.name);
-        });
+  let contentHtml = fs.readFileSync("characters/akuma.html", "utf8");
+  //   let contentHtml = fs.readFileSync(location, "utf8");
+  const browser = await puppeteer.launch();
+  const page = await browser.newPage();
+  page.on("console", consoleObj => {
+    if (consoleObj.type() != "warning") {
+      console.log(consoleObj.text());
     }
-    
-    await browser.close();
+  });
+  await page.setContent(contentHtml);
+
+  const result = await page.evaluate(() => {
+    let vts = [1, 2];
+    let result = {};
+    vts.forEach(vt => {
+      let nameCells = Array.from(
+        document.querySelectorAll(`table.frameTbl[vtrigger="${vt}"] td.name`)
+      );
+
+      let travel = function(node, callback) {
+        let root = node;
+        let current = node;
+
+        while (true) {
+          let child = callback(current);
+
+          if (child) {
+            current = child;
+            continue;
+          }
+
+          if (current == root) {
+            return;
+          }
+
+          while (!current.nextSibling) {
+            if (!current.parentNode || current.parentNode == root) {
+              return;
+            }
+            current = current.parentNode;
+          }
+
+          current = current.nextSibling;
+        }
+      };
+
+      let data = [];
+      nameCells.forEach(cell => {
+        let arr = [];
+        let re = /\/([^./]+).gif/;
+
+        travel(cell, function(node) {
+          // console.log('nodeType:', node.nodeType)
+          if (node.nodeType == 3) {
+            arr.push(node.textContent.trim());
+          } else if (node.nodeName.toLowerCase() == "img") {
+            let src = node.src;
+            let matches = src.match(re);
+
+            arr.push(matches[1]);
+          }
+
+          return node.firstChild;
+        });
+
+        // let frame = [];
+
+        // let curr = cell.nextElementSibling;
+        // let n = 1;
+        // while (curr && curr.nodeName === "TD") {
+        //   if (curr.querySelectorAll("span").length < 1) {
+        //     frame.push(curr.innerText.trim());
+        //   } else {
+        //     if (n == 9 || n == 10) {
+        //       frame.push(curr.querySelector("span").innerText.trim());
+        //     } else {
+        //       let text = [];
+        //       Array.from(curr.querySelectorAll("span")).forEach(span => {
+        //         text.push(span.innerText.trim());
+        //       });
+        //       frame.push(text.join(" "));
+        //     }
+        //   }
+
+        //   curr = curr.nextElementSibling;
+        //   n++;
+        // }
+
+        data.push({
+          name: arr.filter(Boolean)
+          // frame: frame
+        });
+      });
+
+      result["vt" + vt] = data;
+    });
 
     return result;
+  });
+
+  // for (var key in result) {
+  //   let data = result[key];
+  //   data.forEach(item => {
+  //     item.name = formatName(item.name);
+  //   });
+  // }
+
+  console.log(result);
+
+  await browser.close();
+
+  return result;
 };
 
-function formatName(tokens) {
-let i = 0;
-let l = tokens.length;
+const extractFrameName = async location => {
+  let contentHtml = fs.readFileSync("characters/kage.html", "utf8");
+  //   let contentHtml = fs.readFileSync(location, "utf8");
+  const browser = await puppeteer.launch();
+  const page = await browser.newPage();
+  page.on("console", consoleObj => {
+    if (consoleObj.type() != "warning") {
+      console.log(consoleObj.text());
+    }
+  });
+  await page.setContent(contentHtml);
 
-while (i < l) {
-    let t = tokens[i];
-    if (t == 'punch' || t == 'kick') {
-    tokens[i] = t === 'punch' ? 'P' : 'K';
-    let j = i + 1;
-    if (j < l) {
-        let nt = tokens[j];
-        if (nt == 'L' || nt == 'M' || nt == 'H') {
-        tokens[i] = nt + (t === 'punch' ? 'P' : 'K');
-        tokens[j] = '';
+  const data = await page.evaluate(() => {
+    let nameCells = Array.from(
+      document.querySelectorAll(`table.frameTbl[vtrigger="1"] td.name`)
+    );
+
+    let travelNode = function(node) {};
+
+    let travel = function(node, callback) {
+      let root = node;
+      let current = node;
+
+      while (true) {
+        let child = callback(current);
+
+        if (child) {
+          current = child;
+          continue;
         }
-    }
-    } else if (t == 'next') {
-    tokens[i] = '.';
-    }
 
-    i++;
-}
+        if (current == root) {
+          return;
+        }
 
-if (tokens[0] === 'V') {
-    tokens[0] = `[VT] ${tokens[1]}`;
-    tokens[1] = '';
-}
+        while (!current.nextSibling) {
+          if (!current.parentNode || current.parentNode == root) {
+            return;
+          }
+          current = current.parentNode;
+        }
 
-return tokens.filter(Boolean);
+        current = current.nextSibling;
+      }
+    };
 
-}
+    let data = [];
+    nameCells.forEach(cell => {
+      let arr = [];
+      let re = /\/([^./]+).gif/;
+
+      travel(cell, function(node) {
+        // console.log('nodeType:', node.nodeType)
+        if (node.nodeName == "P" && node.className == "keyBlockFrm") {
+          let img = node.querySelector(".cmd-image-s");
+          let src = img.src;
+          let matches = src.match(re);
+          let btn = matches[1];
+
+          if (btn === "punch") {
+            btn = "P";
+          } else if (btn === "kick") {
+            btn = "K";
+          }
+
+          let types = [];
+          let spans = node.querySelectorAll("span");
+          for (let i = 0; i < spans.length; i++) {
+            types.push(spans[i].innerText);
+          }
+
+          let btns = types
+            .map(type => {
+              return type + btn;
+            })
+            .join("");
+
+          arr.push(btns);
+
+          return null;
+        }
+
+        if (node.nodeType == 3) {
+          arr.push(node.textContent.trim());
+        } else if (node.nodeName.toLowerCase() == "img") {
+          let src = node.src;
+          let matches = src.match(re);
+
+          let btn = matches[1];
+
+          if (btn === "punch") {
+            btn = "P";
+          } else if (btn === "kick") {
+            btn = "K";
+          }
+
+          arr.push(btn);
+        }
+
+        return node.firstChild;
+      });
+
+      // let frame = [];
+
+      // let curr = cell.nextElementSibling;
+      // let n = 1;
+      // while (curr && curr.nodeName === "TD") {
+      //   if (curr.querySelectorAll("span").length < 1) {
+      //     frame.push(curr.innerText.trim());
+      //   } else {
+      //     if (n == 9 || n == 10) {
+      //       frame.push(curr.querySelector("span").innerText.trim());
+      //     } else {
+      //       let text = [];
+      //       Array.from(curr.querySelectorAll("span")).forEach(span => {
+      //         text.push(span.innerText.trim());
+      //       });
+      //       frame.push(text.join(" "));
+      //     }
+      //   }
+
+      //   curr = curr.nextElementSibling;
+      //   n++;
+      // }
+
+      data.push(arr.filter(Boolean));
+    });
+
+    return data;
+  });
+
+  // for (var key in result) {
+  //   let data = result[key];
+  //   data.forEach(item => {
+  //     item.name = formatName(item.name);
+  //   });
+  // }
+
+  console.log(data);
+
+  await browser.close();
+
+  return data;
+};
+
+extractFrameName();
+
+// function formatName(tokens) {
+//   let i = 0;
+//   let l = tokens.length;
+
+//   while (i < l) {
+//     let t = tokens[i];
+//     if (t == "punch" || t == "kick") {
+//       tokens[i] = t === "punch" ? "P" : "K";
+//       let j = i + 1;
+//       if (j < l) {
+//         let nt = tokens[j];
+//         if (nt == "L" || nt == "M" || nt == "H") {
+//           tokens[i] = nt + (t === "punch" ? "P" : "K");
+//           tokens[j] = "";
+//         }
+//       }
+//     } else if (t == "next") {
+//       tokens[i] = ".";
+//     }
+
+//     i++;
+//   }
+
+//   if (tokens[0] === "V") {
+//     tokens[0] = `[VT] ${tokens[1]}`;
+//     tokens[1] = "";
+//   }
+
+//   return tokens.filter(Boolean);
+// }
 
 // 批量提取
-(async function() {
-    const files = fs.readdirSync('characters');
-    for (let i = 0; i < files.length; i++) {
-        const data = await extractFrameData(`characters/${files[i]}`);
-        const fileName = files[i].replace('.html', '.json');
+// (async function() {
+//   const files = fs.readdirSync("characters");
+//   for (let i = 0; i < files.length; i++) {
+//     const data = await extractFrameData(`characters/${files[i]}`);
+//     const fileName = files[i].replace(".html", ".json");
 
-        fs.writeFileSync('frames/' + fileName, JSON.stringify(data), err => {
-            if (err) {
-                console.log(err);
-            }
-        });
-    }
-})();
+//     fs.writeFileSync("frames/" + fileName, JSON.stringify(data), err => {
+//       if (err) {
+//         console.log(err);
+//       }
+//     });
+//   }
+// })();
 
 // const links = require('./links.json');
 // (async () => {
